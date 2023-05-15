@@ -2,10 +2,6 @@
 # # Assignment
 
 
-
-
-
-
 # %%
 # Import 
 
@@ -18,6 +14,7 @@ from degree_freedom_king2 import *
 from generate_game import *
 from Chess_env import *
 
+np.random.seed(seed=20)
 
 size_board = 4
 
@@ -73,8 +70,10 @@ n_hidden_layer=200                ## NUMBER OF HIDDEN NODES
 ## INITALISE YOUR NEURAL NETWORK...
 
 ############## for one hidden layer
-W1 = np.random.uniform(0,1,(n_hidden_layer, n_input_layer))
-W2 = np.random.uniform(0,1,(N_a, n_hidden_layer))
+# W1 = np.random.uniform(0,1,(n_hidden_layer, n_input_layer))
+# W2 = np.random.uniform(0,1,(N_a, n_hidden_layer))
+W1 = np.random.randn(n_hidden_layer, n_input_layer) * np.sqrt(2/n_input_layer)
+W2 = np.random.randn(N_a, n_hidden_layer)* np.sqrt(2/n_hidden_layer)
 
 # The following normalises the random weights so that the sum of each row =1
 W1 = np.divide(W1,np.matlib.repmat(np.sum(W1,1)[:,None],1,n_input_layer))
@@ -95,8 +94,8 @@ beta = 0.00005      # THE PARAMETER SETS HOW QUICKLY THE VALUE OF EPSILON IS DEC
 gamma = 0.85        # THE DISCOUNT FACTOR
 eta = 0.0035        # THE LEARNING RATE
 
-N_episodes = 100000 # THE NUMBER OF GAMES TO BE PLAYED 
-# N_episodes = 10000 # THE NUMBER OF GAMES TO BE PLAYED 
+# N_episodes = 100000 # THE NUMBER OF GAMES TO BE PLAYED 
+N_episodes = 10000 # THE NUMBER OF GAMES TO BE PLAYED 
 
 # SAVING VARIABLES
 R_save = np.zeros([N_episodes, 1]) # rewards
@@ -134,7 +133,8 @@ def sigmoid_activation(h:np.array):
 for n in range(N_episodes):
     
 
-    Qvals = np.zeros([np.shape(allowed_a)[0], 1]) # initiliase a Q values array
+    Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
+    # Qvals = np.zeros((N_a,))
 
     epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon # TODO: maybe this is wrong or this decaying ep isn't actually decaying?
     Done = 0 # beginning of episode
@@ -143,13 +143,12 @@ for n in range(N_episodes):
 
     # play the game move by move
     while Done == 0: 
-        # Initialise the gradients for each batch (game)
+        # Initialise the gradients for each batch (step)
         dW1 = np.zeros(W1.shape)
         dW2 = np.zeros(W2.shape)
 
         dbias_W1 = np.zeros(bias_W1.shape)
         dbias_W2 = np.zeros(bias_W2.shape)
-
 
         # NN forward prop
         h1 = np.dot(W1, X) + bias_W1 
@@ -173,8 +172,8 @@ for n in range(N_episodes):
 
             # backprop
             target_Qvals = Qvals.copy()
-            np.put(target_Qvals, [chosen_action_index], [eta * R])
-            
+            target_Qvals[chosen_action] = eta * (R)
+
             e_n = target_Qvals - Qvals # Compute the error signal
 
             # Backpropagation: output layer -> hidden layer
@@ -192,7 +191,7 @@ for n in range(N_episodes):
             errors[i] = errors[i] + 0.5*np.sum(np.square(e_n))/i 
             
             
-            # After each batch (game) update the weights using accumulated gradients
+            # Update the weights using accumulated gradients
             W2 += eta*dW2/i
             W1 += eta*dW1/i
 
@@ -204,12 +203,10 @@ for n in range(N_episodes):
             avg_reward = np.mean(R_save)
 
             N_moves_save[n]=np.copy(i)
-            no_of_moves = np.mean(N_moves_save)
+            no_of_moves = N_moves_save[n]
 
             # debug
-            print("avg_reward: {}, no_of_moves: {}, episode: {}".format(avg_reward, no_of_moves, n))
-
-       
+            print("avg_reward: {}, no_of_moves: {}, error: {}, episode: {}".format(avg_reward, no_of_moves, errors[i] ,n))
 
             break
 
@@ -224,15 +221,15 @@ for n in range(N_episodes):
             Qvals_prime = sigmoid_activation(h2_prime)
 
             # SARSA: choose action' from state' using policy 
-            poss_actions_indices, _ = np.where(allowed_a_next==1)
-            poss_action_Qvals = np.copy(Qvals_prime[poss_actions_indices])
-            chosen_action_prime_index = EpsilonGreedy_Policy(poss_action_Qvals, epsilon_f) # returns index of chosen action
-            chosen_action_prime = poss_actions_indices[chosen_action_prime_index]
+            poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
+            poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
+            chosen_action_prime_index = EpsilonGreedy_Policy(poss_action_prime_Qvals, epsilon_f) # returns index of chosen action
+            chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
             chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
 
             # backprop
             target_Qvals = Qvals.copy()
-            np.put(target_Qvals, [chosen_action_index], [eta * (R + (gamma * chosen_action_prime_Qval))])
+            target_Qvals[chosen_action] = eta * (R + (gamma * chosen_action_prime_Qval))
             
             e_n = target_Qvals - Qvals # Compute the error signal
             
@@ -250,7 +247,7 @@ for n in range(N_episodes):
             # Store the error per epoch (step)
             errors[i] = errors[i] + 0.5*np.sum(np.square(e_n))/i 
 
-            # After each batch (game) update the weights using accumulated gradients
+            # After each batch (step) update the weights using accumulated gradients
             W2 += eta*dW2/i
             W1 += eta*dW1/i
 
@@ -267,5 +264,13 @@ for n in range(N_episodes):
         i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
 
 
+# %%
 
+plt.figure(figsize=(10, 5))
+avg_reward_list = [np.mean(R_save[:i]) for i in range(1, N_episodes+1)]
+plt.plot(range(1, N_episodes+1), avg_reward_list, 'r.-', label='Running average')
+plt.yticks([0, 0.5, 1])
+plt.grid(linestyle=':')
+plt.legend()
+plt.show()
 # %%

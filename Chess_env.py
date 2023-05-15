@@ -7,7 +7,7 @@ from degree_freedom_king1 import *
 from degree_freedom_king2 import *
 from generate_game import *
 
-
+np.random.seed(seed=42)
 
 class Chess_Env:
     
@@ -96,6 +96,7 @@ class Chess_Env:
            self.Board[self.p_q1[0], self.p_q1[1]] = 0
            
            mov = self.map[direction, :] * steps
+                 
            self.Board[self.p_q1[0] + mov[0], self.p_q1[1] + mov[1]] = 2
            self.p_q1[0] = self.p_q1[0] + mov[0]
            self.p_q1[1] = self.p_q1[1] + mov[1]

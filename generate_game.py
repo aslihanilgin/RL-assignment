@@ -2,7 +2,7 @@ import numpy as np
 from degree_freedom_king1 import *
 from degree_freedom_queen import *
 
-
+np.random.seed(seed=42)
 
 def generate_game(size_board):
     """
