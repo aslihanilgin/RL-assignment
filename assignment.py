@@ -65,17 +65,15 @@ n_hidden_layer=200                ## NUMBER OF HIDDEN NODES
 
 ## INITALISE THE NEURAL NETWORK...
 
-############## for one hidden layer
+# initialise weights
 W1 = np.random.uniform(0,1,(n_hidden_layer, n_input_layer))
 W2 = np.random.uniform(0,1,(N_a, n_hidden_layer))
 
-# The following normalises the random weights so that the sum of each row =1
+# normalise the random weights so that the sum of each row == 1
 W1 = np.divide(W1,np.matlib.repmat(np.sum(W1,1)[:,None],1,n_input_layer))
 W2 = np.divide(W2,np.matlib.repmat(np.sum(W2,1)[:,None],1,n_hidden_layer))
 
-
-# Initialize the biases
-
+# initialise biases
 bias_W1 = np.zeros((n_hidden_layer,))
 bias_W2 = np.zeros((N_a,))
 
@@ -96,14 +94,8 @@ R_save = np.zeros([N_episodes, 1]) # rewards
 N_moves_save = np.zeros([N_episodes, 1])
 avg_reward_list = np.zeros([N_episodes, 1])
 
-
-# Keep track of the network inputs and average error per epoch
-errors = np.zeros((N_episodes,))
-
-
 # %%
 ## DEFINE THE EPSILON-GREEDY POLICY
-# exploration vs exploitation 
 def EpsilonGreedy_Policy(Qvalues:np.array, epsilon:float):
     
     N_a=np.shape(Qvalues)[0]
@@ -262,10 +254,10 @@ def qlearning_algorithm():
 
         Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
 
-        epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon # TODO: maybe this is wrong or this decaying ep isn't actually decaying?
+        epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon
         Done = 0 # beginning of episode
         i = 1 # counter for number of actions per episode
-        S, X, allowed_a = env.Initialise_game() # initialise game # TODO: maybe don't do this cos it's already initialised? 
+        S, X, allowed_a = env.Initialise_game() # initialise game
 
         # play the game move by move
         while Done == 0: 
