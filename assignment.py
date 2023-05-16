@@ -77,8 +77,6 @@ W2 = np.divide(W2,np.matlib.repmat(np.sum(W2,1)[:,None],1,n_hidden_layer))
 bias_W1 = np.zeros((n_hidden_layer,))
 bias_W2 = np.zeros((N_a,))
 
-##############
-
 # HYPERPARAMETERS SUGGESTED (FOR A GRID SIZE OF 4)
 
 epsilon_0 = 0.2     # STARTING VALUE OF EPSILON FOR THE EPSILON-GREEDY POLICY
@@ -86,7 +84,6 @@ beta = 0.00005      # THE PARAMETER SETS HOW QUICKLY THE VALUE OF EPSILON IS DEC
 gamma = 0.85        # THE DISCOUNT FACTOR
 eta = 0.0035        # THE LEARNING RATE
 
-# N_episodes = 100000 # THE NUMBER OF GAMES TO BE PLAYED 
 N_episodes = 20000 # THE NUMBER OF GAMES TO BE PLAYED 
 
 # SAVING VARIABLES
@@ -120,259 +117,255 @@ def sigmoid_activation(h:np.array):
 # %%
 
 # SARSA Algorithm
-def sarsa_algorithm():
-    for n in range(N_episodes):
-        
+# Uncomment to use, comment when not used.
+for n in range(N_episodes):
+    
 
-        Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
+    Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
 
-        epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon 
-        Done = 0 # beginning of episode
-        i = 1 # counter for number of actions per episode
-        S, X, allowed_a = env.Initialise_game() # initialise game 
+    epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon 
+    Done = 0 # beginning of episode
+    i = 1 # counter for number of actions per episode
+    S, X, allowed_a = env.Initialise_game() # initialise game 
 
-        # play the game move by move
-        while Done == 0: 
-            # Initialise the gradients for each batch (step)
-            dW1 = np.zeros(W1.shape)
-            dW2 = np.zeros(W2.shape)
+    # play the game move by move
+    while Done == 0: 
+        # Initialise the gradients for each batch (step)
+        dW1 = np.zeros(W1.shape)
+        dW2 = np.zeros(W2.shape)
 
-            dbias_W1 = np.zeros(bias_W1.shape)
-            dbias_W2 = np.zeros(bias_W2.shape)
+        dbias_W1 = np.zeros(bias_W1.shape)
+        dbias_W2 = np.zeros(bias_W2.shape)
 
-            # NN forward prop
-            h1 = np.dot(W1, X) + bias_W1 
-            x1 = sigmoid_activation(h1)
-            h2 = np.dot(W2, x1) + bias_W2
-            Qvals = sigmoid_activation(h2)
+        # NN forward prop
+        h1 = np.dot(W1, X) + bias_W1 
+        x1 = sigmoid_activation(h1)
+        h2 = np.dot(W2, x1) + bias_W2
+        Qvals = sigmoid_activation(h2)
 
-            # SARSA: choose action from state using policy 
-            poss_actions_indices, _ = np.where(allowed_a==1)
-            poss_action_Qvals = np.copy(Qvals[poss_actions_indices])
-            chosen_action_index = EpsilonGreedy_Policy(poss_action_Qvals, epsilon_f) # returns index of chosen action
-            chosen_action = poss_actions_indices[chosen_action_index]
-            chosen_action_Qval = Qvals[chosen_action] # get the Q value of action
+        # SARSA: choose action from state using policy 
+        poss_actions_indices, _ = np.where(allowed_a==1)
+        poss_action_Qvals = np.copy(Qvals[poss_actions_indices])
+        chosen_action_index = EpsilonGreedy_Policy(poss_action_Qvals, epsilon_f) # returns index of chosen action
+        chosen_action = poss_actions_indices[chosen_action_index]
+        chosen_action_Qval = Qvals[chosen_action] # get the Q value of action
 
-        
-            S_next, X_next, allowed_a_next, R, Done = env.OneStep(chosen_action) # take action
-
-
-            if Done == 1: # game has ended
+    
+        S_next, X_next, allowed_a_next, R, Done = env.OneStep(chosen_action) # take action
 
 
-                # backprop
-                target_Qvals = Qvals.copy()
-                target_Qvals[chosen_action] = (R)
+        if Done == 1: # game has ended
 
-                e_n = target_Qvals - Qvals # Compute the error signal
 
-                # Backpropagation: output layer -> hidden layer
-                delta2 = Qvals*(1-Qvals) * e_n
-                    
-                dW2 += np.outer(delta2, x1)
-                dbias_W2 += delta2
+            # backprop
+            target_Qvals = Qvals.copy()
+            target_Qvals[chosen_action] = (R)
 
-                # Backpropagation: hidden layer -> input layer
-                delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
-                dW1 += np.outer(delta1,X)
-                dbias_W1 += delta1
+            e_n = target_Qvals - Qvals # Compute the error signal
+
+            # Backpropagation: output layer -> hidden layer
+            delta2 = Qvals*(1-Qvals) * e_n
                 
-                # Update the weights using accumulated gradients
-                W2 += eta*dW2
-                W1 += eta*dW1
+            dW2 += np.outer(delta2, x1)
+            dbias_W2 += delta2
 
-                bias_W1 += eta*dbias_W1
-                bias_W2 += eta*dbias_W2
-
-                # average reward and number of moves
-                R_save[n]=np.copy(R)
-
-                N_moves_save[n]=np.copy(i)
-                no_of_moves = N_moves_save[n]
-
-                # debug
-                print("episode: {}".format(n))
-
-                break
-
-
-            else: # game is not over yet
-
-                # Get the chosen step
-                # NN forward prop
-                h1_prime = np.dot(W1, X_next) + bias_W1 
-                x1_prime = sigmoid_activation(h1_prime)
-                h2_prime = np.dot(W2, x1_prime) + bias_W2
-                Qvals_prime = sigmoid_activation(h2_prime)
-
-                # choose action' from state' using policy 
-                poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
-                poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
-                chosen_action_prime_index = EpsilonGreedy_Policy(poss_action_prime_Qvals, epsilon_f) # returns index of chosen action
-                chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
-                chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
-
-                # backprop
-                target_Qvals = Qvals.copy()
-                target_Qvals[chosen_action] =  (R + (gamma * chosen_action_prime_Qval))
-                
-                e_n = target_Qvals - Qvals # Compute the error signal
-                
-                # Backpropagation: output layer -> hidden layer
-                delta2 = Qvals*(1-Qvals) * e_n
-                    
-                dW2 += np.outer(delta2, x1)
-                dbias_W2 += delta2
-
-                # Backpropagation: hidden layer -> input layer
-                delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
-                dW1 += np.outer(delta1,X)
-                dbias_W1 += delta1
-
-                # After each batch (step) update the weights using accumulated gradients
-                W2 += eta*dW2
-                W1 += eta*dW1
-
-                bias_W1 += eta*dbias_W1
-                bias_W2 += eta*dbias_W2
-
-
-
-            # next state becomes current state
-            S=np.copy(S_next)
-            X=np.copy(X_next)
-            allowed_a=np.copy(allowed_a_next)
+            # Backpropagation: hidden layer -> input layer
+            delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
+            dW1 += np.outer(delta1,X)
+            dbias_W1 += delta1
             
-            i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
+            # Update the weights using accumulated gradients
+            W2 += eta*dW2
+            W1 += eta*dW1
+
+            bias_W1 += eta*dbias_W1
+            bias_W2 += eta*dbias_W2
+
+            # average reward and number of moves
+            R_save[n]=np.copy(R)
+
+            N_moves_save[n]=np.copy(i)
+            no_of_moves = N_moves_save[n]
+
+            # debug
+            print("episode: {}".format(n))
+
+            break
+
+
+        else: # game is not over yet
+
+            # Get the chosen step
+            # NN forward prop
+            h1_prime = np.dot(W1, X_next) + bias_W1 
+            x1_prime = sigmoid_activation(h1_prime)
+            h2_prime = np.dot(W2, x1_prime) + bias_W2
+            Qvals_prime = sigmoid_activation(h2_prime)
+
+            # choose action' from state' using policy 
+            poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
+            poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
+            chosen_action_prime_index = EpsilonGreedy_Policy(poss_action_prime_Qvals, epsilon_f) # returns index of chosen action
+            chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
+            chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
+
+            # backprop
+            target_Qvals = Qvals.copy()
+            target_Qvals[chosen_action] =  (R + (gamma * chosen_action_prime_Qval))
+            
+            e_n = target_Qvals - Qvals # Compute the error signal
+            
+            # Backpropagation: output layer -> hidden layer
+            delta2 = Qvals*(1-Qvals) * e_n
+                
+            dW2 += np.outer(delta2, x1)
+            dbias_W2 += delta2
+
+            # Backpropagation: hidden layer -> input layer
+            delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
+            dW1 += np.outer(delta1,X)
+            dbias_W1 += delta1
+
+            # After each batch (step) update the weights using accumulated gradients
+            W2 += eta*dW2
+            W1 += eta*dW1
+
+            bias_W1 += eta*dbias_W1
+            bias_W2 += eta*dbias_W2
+
+
+
+        # next state becomes current state
+        S=np.copy(S_next)
+        X=np.copy(X_next)
+        allowed_a=np.copy(allowed_a_next)
+        
+        i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
 
 # %%
 
-# Q-Learning Algorithm
-def qlearning_algorithm():
-    for n in range(N_episodes):
-        
+# # Q-Learning Algorithm
+# # Uncomment to use, comment when not used.
+# for n in range(N_episodes):
+    
 
-        Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
+#     Qvals = np.zeros([N_a, 1]) # initiliase a Q values array
 
-        epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon
-        Done = 0 # beginning of episode
-        i = 1 # counter for number of actions per episode
-        S, X, allowed_a = env.Initialise_game() # initialise game
+#     epsilon_f = epsilon_0 / (1 + beta * n) # decaying epsilon
+#     Done = 0 # beginning of episode
+#     i = 1 # counter for number of actions per episode
+#     S, X, allowed_a = env.Initialise_game() # initialise game
 
-        # play the game move by move
-        while Done == 0: 
-            # Initialise the gradients for each batch (step)
-            dW1 = np.zeros(W1.shape)
-            dW2 = np.zeros(W2.shape)
+#     # play the game move by move
+#     while Done == 0: 
+#         # Initialise the gradients for each batch (step)
+#         dW1 = np.zeros(W1.shape)
+#         dW2 = np.zeros(W2.shape)
 
-            dbias_W1 = np.zeros(bias_W1.shape)
-            dbias_W2 = np.zeros(bias_W2.shape)
+#         dbias_W1 = np.zeros(bias_W1.shape)
+#         dbias_W2 = np.zeros(bias_W2.shape)
 
-            # NN forward prop
-            h1 = np.dot(W1, X) + bias_W1 
-            x1 = sigmoid_activation(h1)
-            h2 = np.dot(W2, x1) + bias_W2
-            Qvals = sigmoid_activation(h2)
+#         # NN forward prop
+#         h1 = np.dot(W1, X) + bias_W1 
+#         x1 = sigmoid_activation(h1)
+#         h2 = np.dot(W2, x1) + bias_W2
+#         Qvals = sigmoid_activation(h2)
 
-            poss_actions_indices, _ = np.where(allowed_a==1)
-            poss_action_Qvals = np.copy(Qvals[poss_actions_indices])
-            chosen_action_index = EpsilonGreedy_Policy(poss_action_Qvals, epsilon_f) # returns index of chosen action
-            chosen_action = poss_actions_indices[chosen_action_index]
-            chosen_action_Qval = Qvals[chosen_action] # get the Q value of action
+#         poss_actions_indices, _ = np.where(allowed_a==1)
+#         poss_action_Qvals = np.copy(Qvals[poss_actions_indices])
+#         chosen_action_index = EpsilonGreedy_Policy(poss_action_Qvals, epsilon_f) # returns index of chosen action
+#         chosen_action = poss_actions_indices[chosen_action_index]
+#         chosen_action_Qval = Qvals[chosen_action] # get the Q value of action
 
-        
-            S_next, X_next, allowed_a_next, R, Done = env.OneStep(chosen_action) # take action
-
-
-            if Done == 1: # game has ended
+    
+#         S_next, X_next, allowed_a_next, R, Done = env.OneStep(chosen_action) # take action
 
 
-                # backprop
-                target_Qvals = Qvals.copy()
-                target_Qvals[chosen_action] = (R)
-
-                e_n = target_Qvals - Qvals # Compute the error signal
-
-                # Backpropagation: output layer -> hidden layer
-                delta2 = Qvals*(1-Qvals) * e_n
-                dW2 += np.outer(delta2, x1)
-                dbias_W2 += delta2
-
-                # Backpropagation: hidden layer -> input layer
-                delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
-                dW1 += np.outer(delta1,X)
-                dbias_W1 += delta1
-
-                # Update the weights using accumulated gradients
-                W2 += eta*dW2
-                W1 += eta*dW1
-
-                bias_W1 += eta*dbias_W1
-                bias_W2 += eta*dbias_W2
-
-                # average reward and number of moves
-                R_save[n]=np.copy(R)
-
-                N_moves_save[n]=np.copy(i)
-                no_of_moves = N_moves_save[n]
-
-                # debug
-                print("episode: {}".format(n))
-
-                break
+#         if Done == 1: # game has ended
 
 
-            else: # game is not over yet
+#             # backprop
+#             target_Qvals = Qvals.copy()
+#             target_Qvals[chosen_action] = (R)
 
-                # Get the chosen step
-                # NN forward prop
-                h1_prime = np.dot(W1, X_next) + bias_W1 
-                x1_prime = sigmoid_activation(h1_prime)
-                h2_prime = np.dot(W2, x1_prime) + bias_W2
-                Qvals_prime = sigmoid_activation(h2_prime)
+#             e_n = target_Qvals - Qvals # Compute the error signal
 
-                # choose action' from state' using policy 
-                poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
-                poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
-                chosen_action_prime_index = QLearning_Policy(poss_action_prime_Qvals) # returns index of chosen action
-                chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
-                chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
+#             # Backpropagation: output layer -> hidden layer
+#             delta2 = Qvals*(1-Qvals) * e_n
+#             dW2 += np.outer(delta2, x1)
+#             dbias_W2 += delta2
 
-                # backprop
-                target_Qvals = Qvals.copy()
-                target_Qvals[chosen_action] =  (R + (gamma * chosen_action_prime_Qval))
-                
-                e_n = target_Qvals - Qvals # Compute the error signal
-                
-                # Backpropagation: output layer -> hidden layer
-                delta2 = Qvals*(1-Qvals) * e_n
-                    
-                dW2 += np.outer(delta2, x1)
-                dbias_W2 += delta2
+#             # Backpropagation: hidden layer -> input layer
+#             delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
+#             dW1 += np.outer(delta1,X)
+#             dbias_W1 += delta1
 
-                # Backpropagation: hidden layer -> input layer
-                delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
-                dW1 += np.outer(delta1,X)
-                dbias_W1 += delta1
+#             # Update the weights using accumulated gradients
+#             W2 += eta*dW2
+#             W1 += eta*dW1
 
-                # After each batch (step) update the weights using accumulated gradients
-                W2 += eta*dW2
-                W1 += eta*dW1
+#             bias_W1 += eta*dbias_W1
+#             bias_W2 += eta*dbias_W2
 
-                bias_W1 += eta*dbias_W1
-                bias_W2 += eta*dbias_W2
+#             # average reward and number of moves
+#             R_save[n]=np.copy(R)
+
+#             N_moves_save[n]=np.copy(i)
+#             no_of_moves = N_moves_save[n]
+
+#             # debug
+#             print("episode: {}".format(n))
+
+#             break
 
 
-            # next state becomes current state
-            S=np.copy(S_next)
-            X=np.copy(X_next)
-            allowed_a=np.copy(allowed_a_next)
+#         else: # game is not over yet
+
+#             # Get the chosen step
+#             # NN forward prop
+#             h1_prime = np.dot(W1, X_next) + bias_W1 
+#             x1_prime = sigmoid_activation(h1_prime)
+#             h2_prime = np.dot(W2, x1_prime) + bias_W2
+#             Qvals_prime = sigmoid_activation(h2_prime)
+
+#             # choose action' from state' using policy 
+#             poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
+#             poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
+#             chosen_action_prime_index = QLearning_Policy(poss_action_prime_Qvals) # returns index of chosen action
+#             chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
+#             chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
+
+#             # backprop
+#             target_Qvals = Qvals.copy()
+#             target_Qvals[chosen_action] =  (R + (gamma * chosen_action_prime_Qval))
             
-            i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
+#             e_n = target_Qvals - Qvals # Compute the error signal
+            
+#             # Backpropagation: output layer -> hidden layer
+#             delta2 = Qvals*(1-Qvals) * e_n
+                
+#             dW2 += np.outer(delta2, x1)
+#             dbias_W2 += delta2
 
-# %%
-sarsa_algorithm() # Uncomment to use, comment when not used.
-qlearning_algorithm() # Uncomment to use, comment when not used.
+#             # Backpropagation: hidden layer -> input layer
+#             delta1 = x1*(1-x1) * np.dot(W2.T, delta2) 
+#             dW1 += np.outer(delta1,X)
+#             dbias_W1 += delta1
+
+#             # After each batch (step) update the weights using accumulated gradients
+#             W2 += eta*dW2
+#             W1 += eta*dW1
+
+#             bias_W1 += eta*dbias_W1
+#             bias_W2 += eta*dbias_W2
+
+
+#         # next state becomes current state
+#         S=np.copy(S_next)
+#         X=np.copy(X_next)
+#         allowed_a=np.copy(allowed_a_next)
+        
+#         i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
 
 # %%
 
