@@ -80,15 +80,15 @@ bias_W2 = np.zeros((N_a,))
 # HYPERPARAMETERS SUGGESTED (FOR A GRID SIZE OF 4)
 
 epsilon_0 = 0.2     # STARTING VALUE OF EPSILON FOR THE EPSILON-GREEDY POLICY
-beta = 0.00005      # THE PARAMETER SETS HOW QUICKLY THE VALUE OF EPSILON IS DECAYING (SEE epsilon_f BELOW)
-gamma = 0.85        # THE DISCOUNT FACTOR
-eta = 0.0035        # THE LEARNING RATE
+beta = 0.0005      # THE PARAMETER SETS HOW QUICKLY THE VALUE OF EPSILON IS DECAYING (SEE epsilon_f BELOW)
+gamma = 0.50        # THE DISCOUNT FACTOR
+eta = 0.0050        # THE LEARNING RATE
 
-N_episodes = 20000 # THE NUMBER OF GAMES TO BE PLAYED 
+N_episodes = 50000 # THE NUMBER OF GAMES TO BE PLAYED 
 
 # SAVING VARIABLES
-R_save = np.zeros([N_episodes, 1]) # rewards
-N_moves_save = np.zeros([N_episodes, 1])
+R_save = np.zeros(N_episodes) # rewards
+N_moves_save = np.zeros(N_episodes  )
 avg_reward_list = np.zeros([N_episodes, 1])
 
 # %%
@@ -107,7 +107,7 @@ def EpsilonGreedy_Policy(Qvalues:np.array, epsilon:float):
         
     return a
 
-def QLearning_Policy(Qvalues:np.array):
+def GreedyPolicy(Qvalues:np.array):
     return np.argmax(Qvalues)
 
 def sigmoid_activation(h:np.array):
@@ -331,7 +331,7 @@ for n in range(N_episodes):
 #             # choose action' from state' using policy 
 #             poss_actions_prime_indices, _ = np.where(allowed_a_next==1)
 #             poss_action_prime_Qvals = np.copy(Qvals_prime[poss_actions_prime_indices])
-#             chosen_action_prime_index = QLearning_Policy(poss_action_prime_Qvals) # returns index of chosen action
+#             chosen_action_prime_index = GreedyPolicy(poss_action_prime_Qvals) # returns index of chosen action
 #             chosen_action_prime = poss_actions_prime_indices[chosen_action_prime_index]
 #             chosen_action_prime_Qval = Qvals_prime[chosen_action_prime] # get the Q value of action'
 
@@ -367,6 +367,7 @@ for n in range(N_episodes):
         
 #         i += 1  # UPDATE COUNTER FOR NUMBER OF ACTIONS
 
+
 # %%
 
 # create a plot for running average rewards 
@@ -395,4 +396,3 @@ plt.yticks([0, 10, 25])
 plt.grid(linestyle=':')
 plt.legend()
 plt.show()
-# %%
